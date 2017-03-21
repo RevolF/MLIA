@@ -6,6 +6,7 @@ Created on Mon Mar 20 21:48:47 2017
 """
 
 from math import log
+import operator
 
 def calcShannonEnt(dataSet):
     numEntries=len(dataSet)
@@ -58,19 +59,87 @@ def chooseBestFeatureToSplit(dataSet):
             bestFeature=i
     return bestFeature
 
+def majorityCnt(classList):
+    classCount={}
+    for vote in classList:
+        if vote not in classCount.keys():
+            classCount[vote]=0
+        classCount[vote]+=1
+        sortedClassCount=sorted(classCount.iteritems(),
+                                key=operator.itemgetter(1),reverse=True)
+        return sortedClassCount[0][0]
 
+def createTree(dataSet,labels):
+    classList=[example[-1] for example in dataSet]
+    if classList.count(classList[0]) == len(classList):
+        return classList[0]
+    if len(dataSet[0])==1:
+        return majorityCnt(classList)
+    bestFeat=chooseBestFeatureToSplit(dataSet)
+    bestFeatLabel=labels[bestFeat]
+    myTree={bestFeatLabel:{}}
+    del(labels[bestFeat])
+    featValues=[example[bestFeat] for example in dataSet]
+    uniqueVals=set(featValues)
+    for value in uniqueVals:
+        subLabels=labels[:]
+        myTree[bestFeatLabel][value]=createTree(splitDataSet(dataSet,bestFeat,value),subLabels)
+    return myTree
 
+def getNumLeafs(myTree):
+    numLeafs=0
+    firstStr=myTree.keys()[0]
+    secondDict=myTree[firstStr]
+    for key in secondDict.keys():
+        if type(secondDict[key]).__name__=='dict':
+            numLeafs+=getNumLeafs(secondDict[key])
+        else:
+            numLeafs+=1
+    return numLeafs
+    
+def getTreeDepth(myTree):
+    maxDepth=0
+    firstStr=myTree.keys()[0]
+    secondDict=myTree[firstStr]
+    for key in secondDict.keys():
+        if type(secondDict[key]).__name__=='dict':
+            thisDepth=1+getTreeDepth(secondDict[key])
+        else:
+            thisDepth=1
+            if thisDepth>maxDepth:
+                maxDepth=thisDepth
+    return maxDepth
+    
+def retrieveTree(i):
+    listOfTrees =[{'no surfacing': {0: 'no', 1: {'flippers': \
+                {0: 'no', 1: 'yes'}}}},
+                {'no surfacing': {0: 'no', 1: {'flippers': \
+                {0: {'head': {0: 'no', 1: 'yes'}}, 1: 'no'}}}}
+                ]
+    return listOfTrees[i]
+    
+def classify(inputTree,featLabels,testVec):
+    firstStr=inputTree.keys()[0]
+    secondDict=inputTree[firstStr]
+    featIndex=featLabels.index(firstStr)
+    for key in secondDict.keys():
+        if testVec[featIndex]==key:
+            if type(secondDict[key]).__name__=='dict':
+                classLabel=classify(secondDict[key],featLabels,testVec)
+            else:
+                classLabel=secondDict[key]
+    return classLabel
 
-
-
-
-
-
-
-
-
-
-
-
+def storeTree(inputTree,filename):
+    import pickle
+    fw=open(filename,'w')
+    pickle.dump(inputTree,fw)
+    fw.close()
+    
+def grabTree(filename):
+    import pickle
+    fr=open(filename,'r')
+    return pickle.load(fr)
+    
 
 
