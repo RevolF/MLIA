@@ -14,12 +14,15 @@ for SVM:
     KEY PROBLEM:
         minimize 1/2||w||^2
         subject to yi(wxi+b)-1 >= 0
+            if a slack variable is added, then this is transformed to:
+                yi(wxi+b)-1+ei >= 0
     BY lagrange multiplier and KKT conditions:
         ai{yi[wxi+b]-1}=0
     by solving this, we have the optimized hyper-plan as:
         f(x) = sgn{w*x+b} = sgn{sum(ai*yi(xi*x)+b*)}
         a* and b* are the optimized params
         xi*x denotes scalar product of xi and x
+            note that this could be K(xi,x) where K is a kernal function
 '''
 
 def loadDataSet(
@@ -117,7 +120,6 @@ class OptStruct:
         self.alphas = np.mat(np.zeros((self.m, 1)))
         self.b = 0
         self.eCache = np.mat(np.zeros((self.m, 2)))
-
 
 def calcEk(oS, k):
     fXk = float(np.multiply(oS.alphas, oS.labelMat).T * (oS.X * oS.X[k, :].T)) + oS.b
@@ -220,3 +222,32 @@ def smoP(dataMatIn, classLabels, C, toler, maxIter, kTup=('lin', 0)):
             entireSet = True
         print('iteration number: %d' % (iter))
     return oS.b, oS.alphas
+
+def kernelTrans(X,A,kTup):
+    m,n = np.shape(X)
+    K = np.mat(np.zeros((m,1)))
+    if kTup[0] == 'lin':
+        X = X * A.T
+    elif kTup[0] == 'rbf':
+        for j in range(m):
+            deltaRow = X[j,:] - A
+            X[j] = deltaRow * deltaRow.T
+        K = np.exp(K/(-1*kTup[1]**2))
+    else:
+        raise NameError('Houston We have a Probelm, that kernal is not recognized')
+    return K
+
+class optStruct:
+    def __init__(self, dataMatIn, classLabels, C, toler, kTup):
+        self.X = dataMatIn
+        self.labelMat = classLabels
+        self.C = C
+        self.tol = toler
+        self.m = dataMatIn.shape[0]
+        self.alphas = np.mat(np.zeros((self.m, 1)))
+        self.b = 0
+        self.eCache = np.mat(np.zeros((self.m, 2)))
+        self.K = np.mat(np.zeros((self.m, self.m)))
+        for i in range(self.m):
+            self.K[:,i]=kernelTrans(self.X,self.X[i,:],kTup)
+
